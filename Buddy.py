@@ -16,8 +16,17 @@ class PomodoroApp(ctk.CTk):
         self.overrideredirect(True) 
         self.attributes("-topmost", True)
         
+        # Configuración de Transparencia
+        self.opacidad_activa = 1.0   # 100% visible cuando trabajas en la app
+        self.opacidad_inactiva = 0.4 # 40% visible cuando el ratón no está
+        
+        self.attributes("-alpha", self.opacidad_inactiva) 
+        
+        self.bind("<Enter>", self.al_entrar_raton)
+        self.bind("<Leave>", self.al_salir_raton)
+
         self.ancho_expandido = 220
-        self.alto_expandido = 230
+        self.alto_expandido = 230 
         self.ancho_colapsado = 60
         self.alto_colapsado = 60
         self.esta_expandido = True
@@ -38,6 +47,15 @@ class PomodoroApp(ctk.CTk):
         # 3. Diseño de la Interfaz (UI)
         self.setup_ui()
 
+    # Funciones de Transparencia
+    def al_entrar_raton(self, event):
+        """Vuelve la ventana completamente opaca al pasar el ratón."""
+        self.attributes("-alpha", self.opacidad_activa)
+
+    def al_salir_raton(self, event):
+        """Vuelve la ventana semitransparente al quitar el ratón."""
+        self.attributes("-alpha", self.opacidad_inactiva)
+
     def posicionar_ventana(self, ancho, alto):
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -47,9 +65,6 @@ class PomodoroApp(ctk.CTk):
         self.geometry(f"{ancho}x{alto}+{x}+{y}")
 
     def setup_ui(self):
-        """Configura los dos marcos (Pantalla Principal y Pantalla de Configuración)"""
-        
-        # --- PANTALLA 1: MARCO PRINCIPAL ---
         self.frame_principal = ctk.CTkFrame(self, corner_radius=15)
         
         self.label_mascota = ctk.CTkLabel(self.frame_principal, text="⏳", font=("Arial", 35))
@@ -98,38 +113,31 @@ class PomodoroApp(ctk.CTk):
         )
         self.boton_guardar.pack()
 
-        # Botón para cancelar y volver sin guardar
         self.boton_volver = ctk.CTkButton(
             self.frame_config, text="←", command=self.mostrar_pantalla_principal,
             width=20, height=20, fg_color="transparent", text_color="gray"
         )
         self.boton_volver.place(relx=0.1, rely=0.08, anchor="center")
 
-        # Mostramos la pantalla principal por defecto al iniciar
         self.frame_principal.pack(fill="both", expand=True, padx=5, pady=5)
 
-    # --- Lógica de Cambio de Pantallas ---
     def mostrar_pantalla_config(self):
-        """Oculta la pantalla principal y muestra los ajustes."""
         if self.corriendo:
-            self.controlar_temporizador() # Pausa el tiempo si entras a config
+            self.controlar_temporizador() 
             
         self.frame_principal.pack_forget()
         self.frame_config.pack(fill="both", expand=True, padx=5, pady=5)
         
-        # Actualizamos los inputs por si acaso
         self.entrada_trabajo.delete(0, 'end')
         self.entrada_trabajo.insert(0, str(self.minutos_trabajo))
         self.entrada_descanso.delete(0, 'end')
         self.entrada_descanso.insert(0, str(self.minutos_descanso))
 
     def mostrar_pantalla_principal(self):
-        """Oculta los ajustes y vuelve a la pantalla principal."""
         self.frame_config.pack_forget()
         self.frame_principal.pack(fill="both", expand=True, padx=5, pady=5)
 
     def guardar_cambios(self):
-        """Guarda los valores y vuelve a la pantalla principal."""
         try:
             self.minutos_trabajo = int(self.entrada_trabajo.get())
             self.minutos_descanso = int(self.entrada_descanso.get())
@@ -137,19 +145,16 @@ class PomodoroApp(ctk.CTk):
             self.tiempo_trabajo = self.minutos_trabajo * 60
             self.tiempo_descanso = self.minutos_descanso * 60
             
-            # Reiniciamos el reloj
             self.estado = "trabajo"
             self.tiempo_restante = self.tiempo_trabajo
             self.label_tiempo.configure(text=self.formatear_tiempo(self.tiempo_restante))
             self.label_mascota.configure(text="⏳")
             self.frame_principal.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
             
-            # Volvemos a la pantalla principal
             self.mostrar_pantalla_principal()
         except ValueError:
             print("Error: Por favor ingresa solo números.")
 
-    # --- Lógica de Colapsar ---
     def conmutar_vista(self):
         if self.esta_expandido:
             self.posicionar_ventana(self.ancho_colapsado, self.alto_colapsado)
@@ -169,7 +174,6 @@ class PomodoroApp(ctk.CTk):
             self.boton_config.place(relx=0.1, rely=0.08, anchor="center")
             self.esta_expandido = True
 
-    # --- Lógica del Temporizador ---
     def formatear_tiempo(self, segundos):
         minutos = segundos // 60
         segundos = segundos % 60
