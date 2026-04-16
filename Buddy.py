@@ -17,7 +17,7 @@ class PomodoroApp(ctk.CTk):
         self.attributes("-topmost", True)
         
         self.ancho_expandido = 220
-        self.alto_expandido = 180
+        self.alto_expandido = 230
         self.ancho_colapsado = 60
         self.alto_colapsado = 60
         self.esta_expandido = True
@@ -27,8 +27,6 @@ class PomodoroApp(ctk.CTk):
         # 2. Variables de la Lógica del Pomodoro
         self.minutos_trabajo = 25
         self.minutos_descanso = 5
-        
-        # Convertimos a segundos para la lógica interna
         self.tiempo_trabajo = self.minutos_trabajo * 60 
         self.tiempo_descanso = self.minutos_descanso * 60
         self.tiempo_restante = self.tiempo_trabajo
@@ -49,37 +47,109 @@ class PomodoroApp(ctk.CTk):
         self.geometry(f"{ancho}x{alto}+{x}+{y}")
 
     def setup_ui(self):
-        self.main_frame = ctk.CTkFrame(self, corner_radius=15)
-        self.main_frame.pack(fill="both", expand=True, padx=5, pady=5)
-
-        self.label_mascota = ctk.CTkLabel(self.main_frame, text="⏳", font=("Arial", 35))
-        self.label_mascota.pack(pady=(15, 5))
+        """Configura los dos marcos (Pantalla Principal y Pantalla de Configuración)"""
+        
+        # --- PANTALLA 1: MARCO PRINCIPAL ---
+        self.frame_principal = ctk.CTkFrame(self, corner_radius=15)
+        
+        self.label_mascota = ctk.CTkLabel(self.frame_principal, text="⏳", font=("Arial", 35))
+        self.label_mascota.pack(pady=(20, 5))
         self.label_mascota.bind("<Button-1>", lambda event: self.conmutar_vista())
 
         self.label_tiempo = ctk.CTkLabel(
-            self.main_frame, text=self.formatear_tiempo(self.tiempo_restante), font=("Consolas", 28, "bold")
+            self.frame_principal, text=self.formatear_tiempo(self.tiempo_restante), font=("Consolas", 28, "bold")
         )
         self.label_tiempo.pack()
 
         self.boton_control = ctk.CTkButton(
-            self.main_frame, text="Iniciar", command=self.controlar_temporizador, width=100, height=30
+            self.frame_principal, text="Iniciar", command=self.controlar_temporizador, width=100, height=30
         )
         self.boton_control.pack(pady=10)
         
-        # Botón de Configuración
         self.boton_config = ctk.CTkButton(
-            self.main_frame, text="⚙️", command=self.abrir_configuracion,
+            self.frame_principal, text="⚙️", command=self.mostrar_pantalla_config,
             width=20, height=20, fg_color="transparent", text_color="gray"
         )
-        self.boton_config.place(relx=0.1, rely=0.1, anchor="center")
+        self.boton_config.place(relx=0.1, rely=0.08, anchor="center")
 
-        # Botón para cerrar la app
         self.boton_cerrar = ctk.CTkButton(
-            self.main_frame, text="✕", command=self.destroy,
+            self.frame_principal, text="✕", command=self.destroy,
             width=20, height=20, fg_color="transparent", text_color="gray"
         )
-        self.boton_cerrar.place(relx=0.9, rely=0.1, anchor="center")
+        self.boton_cerrar.place(relx=0.9, rely=0.08, anchor="center")
 
+        # --- PANTALLA 2: MARCO DE CONFIGURACIÓN ---
+        self.frame_config = ctk.CTkFrame(self, corner_radius=15)
+        
+        ctk.CTkLabel(self.frame_config, text="Ajustes", font=("Arial", 16, "bold")).pack(pady=(15, 10))
+        
+        ctk.CTkLabel(self.frame_config, text="Trabajo (minutos):").pack()
+        self.entrada_trabajo = ctk.CTkEntry(self.frame_config, width=100, justify="center")
+        self.entrada_trabajo.insert(0, str(self.minutos_trabajo))
+        self.entrada_trabajo.pack(pady=(0, 10))
+
+        ctk.CTkLabel(self.frame_config, text="Descanso (minutos):").pack()
+        self.entrada_descanso = ctk.CTkEntry(self.frame_config, width=100, justify="center")
+        self.entrada_descanso.insert(0, str(self.minutos_descanso))
+        self.entrada_descanso.pack(pady=(0, 15))
+
+        self.boton_guardar = ctk.CTkButton(
+            self.frame_config, text="Guardar", command=self.guardar_cambios, width=100, height=30
+        )
+        self.boton_guardar.pack()
+
+        # Botón para cancelar y volver sin guardar
+        self.boton_volver = ctk.CTkButton(
+            self.frame_config, text="←", command=self.mostrar_pantalla_principal,
+            width=20, height=20, fg_color="transparent", text_color="gray"
+        )
+        self.boton_volver.place(relx=0.1, rely=0.08, anchor="center")
+
+        # Mostramos la pantalla principal por defecto al iniciar
+        self.frame_principal.pack(fill="both", expand=True, padx=5, pady=5)
+
+    # --- Lógica de Cambio de Pantallas ---
+    def mostrar_pantalla_config(self):
+        """Oculta la pantalla principal y muestra los ajustes."""
+        if self.corriendo:
+            self.controlar_temporizador() # Pausa el tiempo si entras a config
+            
+        self.frame_principal.pack_forget()
+        self.frame_config.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Actualizamos los inputs por si acaso
+        self.entrada_trabajo.delete(0, 'end')
+        self.entrada_trabajo.insert(0, str(self.minutos_trabajo))
+        self.entrada_descanso.delete(0, 'end')
+        self.entrada_descanso.insert(0, str(self.minutos_descanso))
+
+    def mostrar_pantalla_principal(self):
+        """Oculta los ajustes y vuelve a la pantalla principal."""
+        self.frame_config.pack_forget()
+        self.frame_principal.pack(fill="both", expand=True, padx=5, pady=5)
+
+    def guardar_cambios(self):
+        """Guarda los valores y vuelve a la pantalla principal."""
+        try:
+            self.minutos_trabajo = int(self.entrada_trabajo.get())
+            self.minutos_descanso = int(self.entrada_descanso.get())
+            
+            self.tiempo_trabajo = self.minutos_trabajo * 60
+            self.tiempo_descanso = self.minutos_descanso * 60
+            
+            # Reiniciamos el reloj
+            self.estado = "trabajo"
+            self.tiempo_restante = self.tiempo_trabajo
+            self.label_tiempo.configure(text=self.formatear_tiempo(self.tiempo_restante))
+            self.label_mascota.configure(text="⏳")
+            self.frame_principal.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
+            
+            # Volvemos a la pantalla principal
+            self.mostrar_pantalla_principal()
+        except ValueError:
+            print("Error: Por favor ingresa solo números.")
+
+    # --- Lógica de Colapsar ---
     def conmutar_vista(self):
         if self.esta_expandido:
             self.posicionar_ventana(self.ancho_colapsado, self.alto_colapsado)
@@ -91,62 +161,15 @@ class PomodoroApp(ctk.CTk):
             self.esta_expandido = False
         else:
             self.posicionar_ventana(self.ancho_expandido, self.alto_expandido)
-            self.label_mascota.pack(pady=(15, 5))
+            self.label_mascota.pack(pady=(20, 5))
             self.label_mascota.configure(font=("Arial", 35))
             self.label_tiempo.pack()
             self.boton_control.pack(pady=10)
-            self.boton_cerrar.place(relx=0.9, rely=0.1, anchor="center")
-            self.boton_config.place(relx=0.1, rely=0.1, anchor="center")
+            self.boton_cerrar.place(relx=0.9, rely=0.08, anchor="center")
+            self.boton_config.place(relx=0.1, rely=0.08, anchor="center")
             self.esta_expandido = True
 
-    # --- Lógica de Configuración ---
-    def abrir_configuracion(self):
-        """Abre una ventana secundaria para editar los tiempos."""
-        # Pausamos el temporizador si el usuario abre los ajustes
-        if self.corriendo:
-            self.controlar_temporizador()
-
-        ventana_config = ctk.CTkToplevel(self)
-        ventana_config.title("Ajustes")
-        ventana_config.geometry("250x200")
-        ventana_config.attributes("-topmost", True) # Mantenerla al frente también
-
-        # Etiquetas y Entradas (Inputs)
-        ctk.CTkLabel(ventana_config, text="Trabajo (minutos):").pack(pady=(10, 0))
-        entrada_trabajo = ctk.CTkEntry(ventana_config, width=100)
-        entrada_trabajo.insert(0, str(self.minutos_trabajo)) # Pone el valor actual
-        entrada_trabajo.pack(pady=5)
-
-        ctk.CTkLabel(ventana_config, text="Descanso (minutos):").pack(pady=(5, 0))
-        entrada_descanso = ctk.CTkEntry(ventana_config, width=100)
-        entrada_descanso.insert(0, str(self.minutos_descanso)) # Pone el valor actual
-        entrada_descanso.pack(pady=5)
-
-        def guardar_cambios():
-            try:
-                # Obtenemos el texto y lo convertimos a entero
-                self.minutos_trabajo = int(entrada_trabajo.get())
-                self.minutos_descanso = int(entrada_descanso.get())
-                
-                # Actualizamos los segundos
-                self.tiempo_trabajo = self.minutos_trabajo * 60
-                self.tiempo_descanso = self.minutos_descanso * 60
-                
-                # Reiniciamos el reloj actual
-                self.estado = "trabajo"
-                self.tiempo_restante = self.tiempo_trabajo
-                self.label_tiempo.configure(text=self.formatear_tiempo(self.tiempo_restante))
-                self.label_mascota.configure(text="⏳")
-                self.main_frame.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
-                
-                ventana_config.destroy() # Cierra la ventana de config
-            except ValueError:
-                # Si el usuario escribe letras en vez de números, lo ignoramos por ahora
-                print("Error: Por favor ingresa solo números.")
-
-        ctk.CTkButton(ventana_config, text="Guardar", command=guardar_cambios).pack(pady=15)
-
-    # --- Lógica del Temporizador (Sin cambios importantes) ---
+    # --- Lógica del Temporizador ---
     def formatear_tiempo(self, segundos):
         minutos = segundos // 60
         segundos = segundos % 60
@@ -182,12 +205,12 @@ class PomodoroApp(ctk.CTk):
             self.estado = "descanso"
             self.tiempo_restante = self.tiempo_descanso
             self.label_mascota.configure(text="☕")
-            self.main_frame.configure(fg_color="#27AE60") 
+            self.frame_principal.configure(fg_color="#27AE60") 
         else:
             self.estado = "trabajo"
             self.tiempo_restante = self.tiempo_trabajo
             self.label_mascota.configure(text="⏳")
-            self.main_frame.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
+            self.frame_principal.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
 
         self.label_tiempo.configure(text=self.formatear_tiempo(self.tiempo_restante))
         
